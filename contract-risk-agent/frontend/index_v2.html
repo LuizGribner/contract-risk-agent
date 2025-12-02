@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Contract Risk Analysis</title>
+  <style>
+    body {
+      font-family: Arial;
+      padding: 20px;
+      max-width: 800px;
+      margin: auto;
+      color: #222;
+    }
+
+    h1 {
+      font-size: 28px;
+      margin-bottom: 25px;
+    }
+
+    #fileInput { display: none; }
+
+    #uploadBtn, #analyzeBtn, #resetBtn {
+      padding: 8px 16px;
+      border: 1px solid #333;
+      background: #f4f4f4;
+      cursor: pointer;
+      border-radius: 4px;
+      margin-right: 10px;
+    }
+
+    #fileName {
+      margin-right: 12px;
+      font-size: 14px;
+      color: #444;
+    }
+
+    #results {
+      margin-top: 25px;
+    }
+
+    .risk {
+      border: 1px solid #ddd;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 8px;
+      background: #fafafa;
+    }
+
+    .risk h3 {
+      margin: 0 0 8px 0;
+      font-size: 18px;
+    }
+
+    .sev-high { border-left: 6px solid #d64545; }
+    .sev-medium { border-left: 6px solid #d6a645; }
+    .sev-low { border-left: 6px solid #4a90e2; }
+
+    #loading {
+      display: none;
+      margin-top: 20px;
+      font-style: italic;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Contract Risk Analysis Agent</h1>
+
+  <button id="uploadBtn">Upload File</button>
+  <span id="fileName">No file selected</span>
+  <button id="analyzeBtn">Analyze</button>
+  <button id="resetBtn">New Analysis</button>
+
+  <input type="file" id="fileInput" accept=".pdf,.txt">
+
+  <div id="loading">Analyzing, please wait…</div>
+  <div id="summary" style="margin-top:20px; font-weight:bold; font-size:17px;"></div>
+  <div id="results"></div>
+
+  <script>
+    const fileInput = document.getElementById("fileInput");
+    const uploadBtn = document.getElementById("uploadBtn");
+    const fileNameSpan = document.getElementById("fileName");
+
+    uploadBtn.onclick = () => fileInput.click();
+
+    fileInput.onchange = () => {
+      const file = fileInput.files[0];
+      fileNameSpan.textContent = file ? file.name : "No file selected";
+    };
+
+    document.getElementById("analyzeBtn").onclick = async function () {
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      document.getElementById("loading").style.display = "block";
+      document.getElementById("results").innerHTML = "";
+      document.getElementById("summary").textContent = "";
+
+      const form = new FormData();
+      form.append("file", file);
+
+      const res = await fetch("http://localhost:8000/analyze", {
+        method: "POST",
+        body: form
+      });
+
+      const data = await res.json();
+      const summary = document.getElementById("summary");
+
+      if (data.risks.length === 0) {
+        summary.textContent = "No risks were detected in this document.";
+      } else {
+        const high = data.risks.filter(r => r.severity === "high").length;
+        const medium = data.risks.filter(r => r.severity === "medium").length;
+        const low = data.risks.filter(r => r.severity === "low").length;
+
+        summary.textContent =
+          `Risk summary: ${high} high, ${medium} medium, ${low} low severity risks detected.`;
+      }
+
+      const container = document.getElementById("results");
+      container.innerHTML = "";
+      document.getElementById("loading").style.display = "none";
+
+      data.risks.forEach(risk => {
+        const div = document.createElement("div");
+        div.className = "risk sev-" + risk.severity.toLowerCase();
+
+        div.innerHTML = `
+          <h3>${risk.title}</h3>
+          <p>${risk.explanation}</p>
+          <p><strong>Severity:</strong> ${risk.severity}</p>
+          ${risk.clause_snippet ? `<p><strong>Excerpt:</strong> ${risk.clause_snippet}</p>` : ""}
+          ${risk.remediation ? `<p><strong>Recommendation:</strong> ${risk.remediation}</p>` : ""}
+        `;
+
+        container.appendChild(div);
+      });
+    };
+
+    document.getElementById("resetBtn").onclick = () => {
+      fileInput.value = "";
+      fileNameSpan.textContent = "No file selected";
+      document.getElementById("results").innerHTML = "";
+      document.getElementById("summary").textContent = "";
+      document.getElementById("loading").style.display = "none";
+    };
+  </script>
+
+</body>
+</html>
