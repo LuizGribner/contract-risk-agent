@@ -1,0 +1,93 @@
+Technical Note – AI Contract Risk Analysis Agent (Updated)
+
+1. Approach
+
+The system was redesigned to combine deterministic rule-based analysis with AI-powered semantic evaluation using Google’s Gemini API.
+
+The pipeline now operates in three layers:
+
+1. Extraction Layer
+	•	extractor.py
+Handles PDF/TXT extraction using pdfplumber + PyPDF2.
+Ensures consistent text retrieval prior to analysis.
+
+2. Dual-Engine Analysis Layer
+	•	analyzer.py
+Performs rule-based risk detection using keyword checks and clause-snippet extraction.
+Flags classic contractual risks such as:
+liability, payment structure, indemnification, termination rights, IP ownership, confidentiality, governing law, renewal, ambiguity, etc.
+	•	ai_analyzer.py
+Uses Gemini (gemini-2.0-flash-lite) to:
+	•	Determine whether the uploaded document is or is not a contract
+	•	Classify the type of non-contract documents
+	•	Explain why it made that determination
+	•	Provide AI-generated risk items when applicable
+	•	Operate in structured JSON mode
+	•	Fall back safely when API quota or network issues occur
+
+The final result merges:
+	•	AI contextual analysis
+	•	Deterministic rule results
+into a single unified output.
+
+3. FastAPI Application Layer
+	•	main.py
+Routes the /analyze endpoint.
+Orchestrates the hybrid pipeline:
+	•	Extract text
+	•	AI contract classification
+	•	Fallback logic
+	•	Rule-based risk engine
+	•	Response model assembly with Pydantic
+
+Frontend
+
+The interface remains minimal by design (per test requirements):
+	•	Upload button
+	•	Loading indicator
+	•	Contract/non-contract classification
+	•	Detailed risk cards (title, explanation, severity, suggested remediation, snippets)
+	•	Reset button
+
+⸻
+
+2. Assumptions
+	•	Documents contain extractable text (no OCR requirement).
+	•	LLM usage is limited to classification and semantic risk reasoning.
+	•	The rule engine intentionally covers common contract risks rather than exhaustive legal interpretation.
+	•	The user can run the backend locally or via Docker.
+
+⸻
+
+3. Limitations
+	•	LLM quality depends on quota and API availability (safe fallback is implemented).
+	•	Rule-based detection cannot interpret deep legal nuances or non-standard clause language.
+	•	PDF extraction may fail on scanned images or highly complex layouts.
+	•	No authentication, database, or multi-user features were included.
+	•	The UI remains intentionally simple.
+
+⸻
+
+4. What Could Be Improved with More Time
+	•	Expand semantic analysis using advanced Gemini models (e.g., Pro or 3.0 series).
+	•	Add OCR (Tesseract or Vision API) for scanned PDFs.
+	•	Support DOCX and HTML contracts.
+	•	Build a clause database or RAG layer (Retrieval-Augmented Generation).
+	•	Enable report export (PDF/HTML).
+	•	Add user dashboards and contract history.
+	•	Implement confidence scoring and explainability layers.
+	•	Improve UI with modular components and enhanced UX.
+
+⸻
+
+5. Why This Solution Satisfies the Technical Test
+	•	Integrates a modern AI model (Gemini) for document analysis.
+	•	Correctly identifies whether a file is or is not a contract.
+	•	Provides structured, explainable classification.
+	•	Performs robust risk detection with:
+	•	Phrase-level rule analysis
+	•	Semantic LLM insights
+	•	Includes a full frontend and backend.
+	•	Runs fully local and in Docker.
+	•	Architecture is simple, clear, maintainable, and easy to review.
+	•	Produces consistent JSON output ready for downstream systems
