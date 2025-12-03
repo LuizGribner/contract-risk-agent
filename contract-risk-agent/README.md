@@ -45,6 +45,17 @@ The system uses a Gemini model (gemini-2.0-flash-lite) to:
 
 Fallback logic ensures the system continues functioning even if API quota is exceeded.
 
+Ready-to-use AI (Docker Image)
+The Docker image provided for evaluation already includes a valid GOOGLE_API_KEY injected at build time.
+Because of this, Gemini-based analysis works immediately, with no setup or configuration required by the reviewer.
+Simply run:
+docker run -p 8000:8000 contract-agent
+
+Security notes:
+	•	No API keys are stored in the repository.
+	•	The key exists only inside the evaluation image.
+	•	The key will be rotated after the review period.
+	•	If the Gemini API ever becomes unavailable, the system automatically falls back to rule-based analysis.
 ⸻
 
 4. Project Structure
