@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <title>Contract Risk Analysis</title>
+
   <style>
     body {
-      font-family: Arial;
+      font-family: Arial, sans-serif;
       padding: 20px;
-      max-width: 800px;
+      max-width: 850px;
       margin: auto;
       color: #222;
     }
@@ -19,13 +20,13 @@
 
     #fileInput { display: none; }
 
-    #uploadBtn, #analyzeBtn, #resetBtn {
+    button {
       padding: 8px 16px;
       border: 1px solid #333;
       background: #f4f4f4;
       cursor: pointer;
       border-radius: 4px;
-      margin-right: 10px;
+      margin-right: 8px;
     }
 
     #fileName {
@@ -61,8 +62,18 @@
       font-style: italic;
       font-size: 16px;
     }
+
+    .non-contract-box {
+      padding: 18px;
+      border-radius: 8px;
+      background: #fff3cd;
+      border: 1px solid #ffeeba;
+      margin-top: 20px;
+      font-size: 16px;
+    }
   </style>
 </head>
+
 <body>
 
   <h1>Contract Risk Analysis Agent</h1>
@@ -70,18 +81,21 @@
   <button id="uploadBtn">Upload File</button>
   <span id="fileName">No file selected</span>
   <button id="analyzeBtn">Analyze</button>
-  <button id="resetBtn">New Analysis</button>
+  <button id="resetBtn">Reset</button>
 
   <input type="file" id="fileInput" accept=".pdf,.txt">
 
   <div id="loading">Analyzing, please wait…</div>
-  <div id="summary" style="margin-top:20px; font-weight:bold; font-size:17px;"></div>
+
+  <div id="nonContract"></div>
   <div id="results"></div>
 
   <script>
-    const fileInput = document.getElementById("fileInput");
     const uploadBtn = document.getElementById("uploadBtn");
+    const fileInput = document.getElementById("fileInput");
     const fileNameSpan = document.getElementById("fileName");
+    const resultsBox = document.getElementById("results");
+    const nonContractBox = document.getElementById("nonContract");
 
     uploadBtn.onclick = () => fileInput.click();
 
@@ -95,8 +109,8 @@
       if (!file) return;
 
       document.getElementById("loading").style.display = "block";
-      document.getElementById("results").innerHTML = "";
-      document.getElementById("summary").textContent = "";
+      resultsBox.innerHTML = "";
+      nonContractBox.innerHTML = "";
 
       const form = new FormData();
       form.append("file", file);
@@ -107,44 +121,46 @@
       });
 
       const data = await res.json();
-      const summary = document.getElementById("summary");
-
-      if (data.risks.length === 0) {
-        summary.textContent = "No risks were detected in this document.";
-      } else {
-        const high = data.risks.filter(r => r.severity === "high").length;
-        const medium = data.risks.filter(r => r.severity === "medium").length;
-        const low = data.risks.filter(r => r.severity === "low").length;
-
-        summary.textContent =
-          `Risk summary: ${high} high, ${medium} medium, ${low} low severity risks detected.`;
-      }
-
-      const container = document.getElementById("results");
-      container.innerHTML = "";
       document.getElementById("loading").style.display = "none";
 
-      data.risks.forEach(risk => {
-        const div = document.createElement("div");
-        div.className = "risk sev-" + risk.severity.toLowerCase();
-
-        div.innerHTML = `
-          <h3>${risk.title}</h3>
-          <p>${risk.explanation}</p>
-          <p><strong>Severity:</strong> ${risk.severity}</p>
-          ${risk.clause_snippet ? `<p><strong>Excerpt:</strong> ${risk.clause_snippet}</p>` : ""}
-          ${risk.remediation ? `<p><strong>Recommendation:</strong> ${risk.remediation}</p>` : ""}
+      // 🔥 HANDLE NON-CONTRACT DOCUMENT
+      if (data.is_contract === false) {
+        nonContractBox.innerHTML = `
+          <div class="non-contract-box">
+            <strong>This document does not appear to be a contract.</strong><br><br>
+            <strong>Detected type:</strong> ${data.document_type}<br>
+            <strong>Reason:</strong> ${data.reason}
+          </div>
         `;
+        return;
+      }
 
-        container.appendChild(div);
-      });
+      // 🔥 CONTRACT — SHOW RISKS
+      if (data.risks && data.risks.length > 0) {
+        data.risks.forEach(risk => {
+          const div = document.createElement("div");
+          div.className = "risk sev-" + risk.severity.toLowerCase();
+
+          div.innerHTML = `
+            <h3>${risk.title}</h3>
+            <p>${risk.explanation}</p>
+            <p><strong>Severity:</strong> ${risk.severity}</p>
+            ${risk.clause_snippet ? `<p><strong>Excerpt:</strong> ${risk.clause_snippet}</p>` : ""}
+            ${risk.remediation ? `<p><strong>Recommendation:</strong> ${risk.remediation}</p>` : ""}
+          `;
+
+          resultsBox.appendChild(div);
+        });
+      } else {
+        resultsBox.innerHTML = "<p>No risks detected.</p>";
+      }
     };
 
     document.getElementById("resetBtn").onclick = () => {
       fileInput.value = "";
       fileNameSpan.textContent = "No file selected";
-      document.getElementById("results").innerHTML = "";
-      document.getElementById("summary").textContent = "";
+      resultsBox.innerHTML = "";
+      nonContractBox.innerHTML = "";
       document.getElementById("loading").style.display = "none";
     };
   </script>
